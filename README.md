@@ -1,5 +1,5 @@
-j1939sniff
-==========
+j1939bridge
+===========
 
 This is a simple example of using the  due_can  library and two
 CAN transceivers--one on the Due's CAN0 pins and the other on the
