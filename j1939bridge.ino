@@ -38,8 +38,6 @@ bool j1939PeerToPeer(long PGN)
 void j1939Decode(long ID, unsigned long* PGN, byte* priority, byte* src_addr, byte *dest_addr)
 {
 	/* decode j1939 fields from 29-bit CAN id */
-	byte nRetCode = 1;
-
 	*src_addr = 255;
 	*dest_addr = 255;
 
