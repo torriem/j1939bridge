@@ -22,40 +22,40 @@ static inline void print_hex(uint8_t *data, int len) {
 	Serial.println("");
 }
 
-bool j1939PeerToPeer(long lPGN)
+bool j1939PeerToPeer(long PGN)
 {
 	// Check the PGN 
-	if(lPGN > 0 && lPGN <= 0xEFFF)
+	if(PGN > 0 && PGN <= 0xEFFF)
 		return true;
 
-	if(lPGN > 0x10000 && lPGN <= 0x1EFFF)
+	if(PGN > 0x10000 && PGN <= 0x1EFFF)
 		return true;
 
 	return false;
 
 }
 
-void j1939Decode(long lID, unsigned long* lPGN, byte* nPriority, byte* nSrcAddr, byte *nDestAddr)
+void j1939Decode(long ID, unsigned long* PGN, byte* priority, byte* src_addr, byte *dest_addr)
 {
 	/* decode j1939 fields from 29-bit CAN id */
 	byte nRetCode = 1;
 
-	*nSrcAddr = 255;
-	*nDestAddr = 255;
+	*src_addr = 255;
+	*dest_addr = 255;
 
-	long lPriority = lID & 0x1C000000;
-	*nPriority = (int)(lPriority >> 26);
+	long _priority = ID & 0x1C000000;
+	*priority = (int)(_priority >> 26);
 
-	*lPGN = lID & 0x00FFFF00;
-	*lPGN = *lPGN >> 8;
+	*PGN = ID & 0x00FFFF00;
+	*PGN = *PGN >> 8;
 
-	lID = lID & 0x000000FF;
-	*nSrcAddr = (int)lID;
+	ID = ID & 0x000000FF;
+	*src_addr = (int)ID;
 
-	if(j1939PeerToPeer(*lPGN) == true)
+	if(j1939PeerToPeer(*PGN) == true)
 	{
-		*nDestAddr = (int)(*lPGN & 0xFF);
-		*lPGN = *lPGN & 0x01FF00;
+		*dest_addr = (int)(*PGN & 0xFF);
+		*PGN = *PGN & 0x01FF00;
 	}
 }
 
