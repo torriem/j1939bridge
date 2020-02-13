@@ -26,38 +26,9 @@
 //#define Serial SerialUSB
 #endif
 
+#include "canframe.h"
+
 #ifdef TEENSY
-//Union for parsing CAN bus data messages. Warning:
-//Invokes type punning, but this works here because
-//CAN bus data is always little-endian (or should be)
-//and the ARM processor on these boards is also little
-//endian.
-typedef union {
-    uint64_t uint64;
-    uint32_t uint32[2]; 
-    uint16_t uint16[4];
-    uint8_t  uint8[8];
-    int64_t int64;
-    int32_t int32[2]; 
-    int16_t int16[4];
-    int8_t  int8[8];
-
-    //deprecated names used by older code
-    uint64_t value;
-    struct {
-        uint32_t low;
-        uint32_t high;
-    };
-    struct {
-        uint16_t s0;
-        uint16_t s1;
-        uint16_t s2;
-        uint16_t s3;
-    };
-    uint8_t bytes[8];
-    uint8_t byte[8]; //alternate name so you can omit the s if you feel it makes more sense
-} BytesUnion;
-
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0;
 FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1;
 #endif
@@ -106,14 +77,14 @@ void j1939Decode(long ID, unsigned long* PGN, byte* priority, byte* src_addr, by
 	}
 }
 
-void got_frame(uint32_t id, uint8_t extended, uint8_t length, 
-               BytesUnion *data, uint8_t which_interface) {
+void got_frame(CANFrame &frame, uint8_t which_interface) 
+{
 	unsigned long PGN;
 	byte priority;
 	byte srcaddr;
 	byte destaddr;
 
-	j1939Decode(id, &PGN, &priority, &srcaddr, &destaddr);
+	j1939Decode(frame.get_id(), &PGN, &priority, &srcaddr, &destaddr);
 
 	//could filter out what we want to look at here on any of these
 	//variables.
@@ -130,60 +101,70 @@ void got_frame(uint32_t id, uint8_t extended, uint8_t length,
 	Serial.print(",");
 	Serial.print(destaddr);
 	Serial.print(",");
-	print_hex(data->bytes, length);
+	print_hex(frame.get_data()->bytes, frame.get_length());
 
 	//example of a decode
 	if (PGN == 65267) { //vehicle position message
 		//latitude
-		Serial.print(data->uint32[0] / 10000000.0 - 210.0);
+		Serial.print(frame.get_data()->uint32[0] / 10000000.0 - 210.0);
 		Serial.print(",");
 		//longitude
-		Serial.println(data->uint32[1] / 10000000.0 - 210.0);
+		Serial.println(frame.get_data()->uint32[1] / 10000000.0 - 210.0);
+	}
+	//if (PGN == 1792) {
+	//	frame.get_data()->bytes[1] = 0x99;
+	//}
+
+	if (which_interface == 1) {
+		//send to other interface (bridge)
+#ifdef TEENSY
+		Can0.write(frame);
+#else
+		Can0.sendFrame(frame);
+#endif
+
+	} else {
+		//send to other interface (bridge)
+#ifdef TEENSY
+		Can1.write(frame);
+#else
+		Can1.sendFrame(frame);
+#endif
 	}
 }
 
 #ifdef TEENSY
 void can0_got_frame_teensy(const CAN_message_t &orig_frame) {
 	//copy frame in case we want to modify it.
-	CAN_message_t frame = orig_frame;
+	CANFrame frame = orig_frame;
 	
 	//process frame
-	got_frame(frame.id, frame.flags.extended, frame.len,
-	          (BytesUnion *)frame.buf, 0);
-
-	//send to other interface (bridge)
-	Can1.write(frame);
-
+	got_frame(frame, 0);
 }
 
 void can1_got_frame_teensy(const CAN_message_t &orig_frame) {
 	//copy frame in case we want to modify it.
-	CAN_message_t frame = orig_frame;
+	CANFrame frame = orig_frame;
 	
 	//process frame
-	got_frame(frame.id, frame.flags.extended, frame.len,
-	          (BytesUnion *)frame.buf, 1);
-
-	//send to other interface (bridge)
-	Can0.write(frame);
-
+	got_frame(frame, 1);
 }
 
 #else
-void can0_got_frame_due(CAN_FRAME *frame) {
+void can0_got_frame_due(CAN_FRAME *orig_frame) {
+	//copy frame in case we want to modify it.
+	CANFrame frame = static_cast<CANFrame>(*orig_frame);
+
 	//process frame
-	got_frame(frame->id, frame->extended, frame->length, &(frame->data), 0);
-	
-	//send to other interface (bridge)
-	Can1.sendFrame(*frame);
+	got_frame(frame, 0);
 }
 
-void can1_got_frame_due(CAN_FRAME *frame) {
-	//process frame
-	got_frame(frame->id, frame->extended, frame->length, &(frame->data), 1);
+void can1_got_frame_due(CAN_FRAME *orig_frame) {
+	//copy frame in case we want to modify it.
+	CANFrame frame = static_cast<CANFrame>(*orig_frame);
 
-	//send to other interface (bridge)
-	Can0.sendFrame(*frame);
+	//process frame
+	got_frame(frame, 1);
 }
 #endif
 
