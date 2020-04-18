@@ -29,8 +29,8 @@
 #include "canframe.h"
 
 #ifdef TEENSY
-FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_256> Can0;
-FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_256> Can1;
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0;
+FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1;
 #endif
 
 static inline void print_hex(uint8_t *data, int len) {
@@ -179,20 +179,20 @@ void setup()
 	Can0.begin();
 	Can0.setBaudRate(250000);
 	Can0.setMaxMB(16);
-	Can0.enableFIFO();
-	Can0.enableFIFOInterrupt();
+	//Can0.enableFIFO();
+	//Can0.enableFIFOInterrupt();
 	Can0.onReceive(can0_got_frame_teensy);
 	//Can0.enableMBInterrupts(FIFO);
-	//Can0.enableMBInterrupts();
+	Can0.enableMBInterrupts();
 
 	Can1.begin();
 	Can1.setBaudRate(250000);
 	Can1.setMaxMB(16);
-	Can1.enableFIFO();
-	Can1.enableFIFOInterrupt();
+	//Can1.enableFIFO();
+	//Can1.enableFIFOInterrupt();
 	Can1.onReceive(can1_got_frame_teensy);
 	//Can1.enableMBInterrupts(FIFO);
-	//Can1.enableMBInterrupts();
+	Can1.enableMBInterrupts();
 #else
 	Can0.begin(CAN_BPS_250K);
 	Can1.begin(CAN_BPS_250K);
