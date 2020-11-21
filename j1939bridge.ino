@@ -23,7 +23,7 @@
 #  include "variant.h" 
 #  include <due_can.h>
 //if needing higher speed output use the native USB port
-//#define Serial SerialUSB
+#define Serial SerialUSB
 #endif
 
 #include "canframe.h"
@@ -33,88 +33,8 @@ FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0;
 FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1;
 #endif
 
-static inline void print_hex(uint8_t *data, int len) {
-	char temp[4];
-	for (int b=0;b < len; b++) {
-		sprintf(temp, "%.2x",data[b]);
-		Serial.print(temp);
-	}
-	Serial.println("");
-}
-
-bool j1939PeerToPeer(long PGN)
-{
-	// Check the PGN 
-	if(PGN > 0 && PGN <= 0xEFFF)
-		return true;
-
-	if(PGN > 0x10000 && PGN <= 0x1EFFF)
-		return true;
-
-	return false;
-
-}
-
-void j1939Decode(long ID, unsigned long* PGN, byte* priority, byte* src_addr, byte *dest_addr)
-{
-	/* decode j1939 fields from 29-bit CAN id */
-	*src_addr = 255;
-	*dest_addr = 255;
-
-	long _priority = ID & 0x1C000000;
-	*priority = (int)(_priority >> 26);
-
-	*PGN = ID & 0x00FFFF00;
-	*PGN = *PGN >> 8;
-
-	ID = ID & 0x000000FF;
-	*src_addr = (int)ID;
-
-	if(j1939PeerToPeer(*PGN) == true)
-	{
-		*dest_addr = (int)(*PGN & 0xFF);
-		*PGN = *PGN & 0x01FF00;
-	}
-}
-
 void got_frame(CANFrame &frame, uint8_t which_interface) 
 {
-	unsigned long PGN;
-	byte priority;
-	byte srcaddr;
-	byte destaddr;
-
-	j1939Decode(frame.get_id(), &PGN, &priority, &srcaddr, &destaddr);
-
-	//could filter out what we want to look at here on any of these
-	//variables.
-	if(which_interface)
-		Serial.print("1->0,");
-	else
-		Serial.print("0->1,");
-
-	Serial.print(PGN);
-	Serial.print(",");
-	Serial.print(priority);
-	Serial.print(",");
-	Serial.print(srcaddr);
-	Serial.print(",");
-	Serial.print(destaddr);
-	Serial.print(",");
-	print_hex(frame.get_data()->bytes, frame.get_length());
-
-	//example of a decode
-	if (PGN == 65267) { //vehicle position message
-		//latitude
-		Serial.print(frame.get_data()->uint32[0] / 10000000.0 - 210.0);
-		Serial.print(",");
-		//longitude
-		Serial.println(frame.get_data()->uint32[1] / 10000000.0 - 210.0);
-	}
-	//if (PGN == 1792) {
-	//	frame.get_data()->bytes[1] = 0x99;
-	//}
-
 	if (which_interface == 1) {
 		//send to other interface (bridge)
 #ifdef TEENSY
@@ -172,7 +92,7 @@ void setup()
 {
 	delay(5000);
 	Serial.begin(115200);
-	Serial.println("j1939 CAN bridge sniffer.");
+	Serial.println("j1939 CAN bridge.");
 
 #ifdef TEENSY
 	//Teensy FlexCAN_T4 setup
