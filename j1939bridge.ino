@@ -23,7 +23,7 @@
 #  include "variant.h" 
 #  include <due_can.h>
 //if needing higher speed output use the native USB port
-//#define Serial SerialUSB
+#define Serial SerialUSB
 #endif
 
 #include "canframe.h"
