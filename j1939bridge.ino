@@ -22,6 +22,18 @@ void can1_got_frame_teensy(const CAN_message_t &frame) {
 	Can0.write(frame);
 }
 
+void ext_output1(const CAN_message_t &frame) {
+	if (frame.bus == CAN1) {
+		Serial.println("0->1");
+		Can1.write(frame);
+	} 
+
+	if (frame.bus == CAN2) {
+		Serial.println("1->0");
+		Can0.write(frame);
+	}
+}
+
 
 void setup()
 {
@@ -35,7 +47,7 @@ void setup()
 	Can0.setMaxMB(16);
 	Can0.enableFIFO();
 	Can0.enableFIFOInterrupt();
-	Can0.onReceive(can0_got_frame_teensy);
+	//Can0.onReceive(can0_got_frame_teensy);
 	//Can0.enableMBInterrupts(FIFO);
 	//Can0.enableMBInterrupts();
 	Can0.mailboxStatus();
@@ -45,7 +57,7 @@ void setup()
 	Can1.setMaxMB(16);
 	Can1.enableFIFO();
 	Can1.enableFIFOInterrupt();
-	Can1.onReceive(can1_got_frame_teensy);
+	//Can1.onReceive(can1_got_frame_teensy);
 	//Can1.enableMBInterrupts(FIFO);
 	//Can1.enableMBInterrupts();
 	Can1.mailboxStatus();
