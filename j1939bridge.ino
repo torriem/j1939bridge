@@ -89,34 +89,34 @@ void got_frame(CANFrame &frame, uint8_t which_interface)
 	//could filter out what we want to look at here on any of these
 	//variables.
   
-	if(which_interface)
-		Serial.print("1->0,");
-	else
-		Serial.print("0->1,");
+	if (PGN == 65535) {
+		if (frame.get_data()->bytes[0] == 0x31 ||
+		    frame.get_data()->bytes[0] == 0x77 ||
+		    frame.get_data()->bytes[0] == 0x76) {
+
+			if(which_interface)
+				Serial.print("1->0,");
+			else
+				Serial.print("0->1,");
 
 
-	Serial.print(PGN);
-	Serial.print(",");
-	Serial.print(priority);
-	Serial.print(",");
-	Serial.print(srcaddr);
-	Serial.print(",");
-	Serial.print(destaddr);
-	Serial.print(",");
-  Serial.print(frame.get_length());
-  Serial.print(",");
-
-  //for(int i=0; i < frame.get_length(); i++)
-  //{
-  // Serial.print(frame.get_data()->bytes[i],HEX);
-  //}
-
-  //Serial.println();
-  
-	print_hex(frame.get_data()->bytes, frame.get_length());
+			Serial.print(PGN);
+			Serial.print(",");
+			Serial.print(priority);
+			Serial.print(",");
+			Serial.print(srcaddr);
+			Serial.print(",");
+			Serial.print(destaddr);
+			Serial.print(",");
+			Serial.print(frame.get_length());
+			Serial.print(",");
+			print_hex(frame.get_data()->bytes, frame.get_length());
+		}
+	}
  
 
 	//example of a decode
+	/*
 	if (PGN == 65267) { //vehicle position message
 		//latitude
     uint32_t latitude = frame.get_data()->uint32[0];
@@ -130,7 +130,7 @@ void got_frame(CANFrame &frame, uint8_t which_interface)
 	//if (PGN == 1792) {
 	//	frame.get_data()->bytes[1] = 0x99;
 	//}
- 
+ 	*/
 	if (which_interface == 1) {
 		//send to other interface (bridge)
 #ifdef TEENSY
@@ -150,23 +150,11 @@ void got_frame(CANFrame &frame, uint8_t which_interface)
 }
 
 #ifdef TEENSY
-void can0_got_frame_teensy(const CAN_message_t &orig_frame) {
-	//copy frame in case we want to modify it.
-	CANFrame frame = orig_frame;
-  //Serial.println("on 0");	
-	//process frame
-	got_frame(frame, 0);
-  //Can1.write(orig_frame);
-}
 
-void can1_got_frame_teensy(const CAN_message_t &orig_frame) {
-	//copy frame in case we want to modify it.
+void ext_output1( const CAN_message_t &orig_frame) {
 	CANFrame frame = orig_frame;
-  //Serial.println("on 1");
-	
-	//process frame
-	got_frame(frame, 1);
-  //Can0.write(orig_frame);
+
+	got_frame(frame, orig_frame.bus-1);
 }
 
 #else
@@ -197,24 +185,18 @@ void setup()
 	//Teensy FlexCAN_T4 setup
 	Can0.begin();
 	Can0.setBaudRate(250000);
-	//Can0.setMaxMB(1);
+	Can0.setMaxMB(16);
 	Can0.enableFIFO();
-	Can0.enableFIFOInterrupt();
-	Can0.onReceive(can0_got_frame_teensy);
-	Can0.enableMBInterrupts(FIFO);
-	Can0.enableMBInterrupts();
 
 	Can1.begin();
 	Can1.setBaudRate(250000);
-	//Can1.setMaxMB(1);
+	Can1.setMaxMB(16);
 	Can1.enableFIFO();
-	Can1.enableFIFOInterrupt();
-	Can1.onReceive(can1_got_frame_teensy);
-	Can1.enableMBInterrupts(FIFO);
-	Can1.enableMBInterrupts();
 
-  Can0.mailboxStatus();
-  Can1.mailboxStatus();
+	Can0.enableFIFOInterrupt();
+	Can0.mailboxStatus();
+	Can1.enableFIFOInterrupt();
+	Can1.mailboxStatus();
 #else
 	Can0.begin(CAN_BPS_250K);
 	Can1.begin(CAN_BPS_250K);
