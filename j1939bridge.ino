@@ -29,8 +29,8 @@
 #include "canframe.h"
 
 #ifdef TEENSY
-FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_256> Can0;
-FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_256> Can1;
+FlexCAN_T4<CAN1, RX_SIZE_1024, TX_SIZE_1024> Can0;
+FlexCAN_T4<CAN2, RX_SIZE_1024, TX_SIZE_1024> Can1;
 #endif
 
 static inline void print_hex(uint8_t *data, int len) {
@@ -89,48 +89,18 @@ void got_frame(CANFrame &frame, uint8_t which_interface)
 	//could filter out what we want to look at here on any of these
 	//variables.
   
-	if (PGN == 65535) {
-		if (frame.get_data()->bytes[0] == 0x31 ||
-		    frame.get_data()->bytes[0] == 0x77 ||
-		    frame.get_data()->bytes[0] == 0x76) {
-
-			if(which_interface)
-				Serial.print("1->0,");
-			else
-				Serial.print("0->1,");
-
-
-			Serial.print(PGN);
-			Serial.print(",");
-			Serial.print(priority);
-			Serial.print(",");
-			Serial.print(srcaddr);
-			Serial.print(",");
-			Serial.print(destaddr);
-			Serial.print(",");
-			Serial.print(frame.get_length());
-			Serial.print(",");
-			print_hex(frame.get_data()->bytes, frame.get_length());
-		}
-	}
- 
-
 	//example of a decode
-	/*
 	if (PGN == 65267) { //vehicle position message
 		//latitude
-    uint32_t latitude = frame.get_data()->uint32[0];
-    uint32_t longitude = frame.get_data()->uint32[1];
+		uint32_t latitude = frame.get_data()->uint32[0];
+		uint32_t longitude = frame.get_data()->uint32[1];
     
 		Serial.print((double)(latitude / 10000000.0 - 210.0), 7);
 		Serial.print(",");
 		//longitude
 		Serial.println((double)(longitude / 10000000.0 - 210.0),7);
 	}
-	//if (PGN == 1792) {
-	//	frame.get_data()->bytes[1] = 0x99;
-	//}
- 	*/
+
 	if (which_interface == 1) {
 		//send to other interface (bridge)
 #ifdef TEENSY
@@ -151,8 +121,10 @@ void got_frame(CANFrame &frame, uint8_t which_interface)
 
 #ifdef TEENSY
 
-void ext_output1( const CAN_message_t &orig_frame) {
+void teensy_got_frame( const CAN_message_t &orig_frame) {
 	CANFrame frame = orig_frame;
+
+	frame.seq = 1; 
 
 	got_frame(frame, orig_frame.bus-1);
 }
@@ -185,13 +157,15 @@ void setup()
 	//Teensy FlexCAN_T4 setup
 	Can0.begin();
 	Can0.setBaudRate(250000);
-	Can0.setMaxMB(16);
+	Can0.setMaxMB(32);
 	Can0.enableFIFO();
+	Can0.onReceive(teensy_got_frame);
 
 	Can1.begin();
 	Can1.setBaudRate(250000);
-	Can1.setMaxMB(16);
+	Can1.setMaxMB(32);
 	Can1.enableFIFO();
+	Can1.onReceive(teensy_got_frame);
 
 	Can0.enableFIFOInterrupt();
 	Can0.mailboxStatus();
@@ -213,9 +187,5 @@ void setup()
 
 void loop() 
 {
-#ifdef TEENSY
-	//process collected frames
-	Can0.events();
-	Can1.events();
-#endif
+	//everything is interrupt-driven.
 }
