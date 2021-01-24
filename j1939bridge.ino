@@ -33,6 +33,8 @@ FlexCAN_T4<CAN1, RX_SIZE_1024, TX_SIZE_1024> Can0;
 FlexCAN_T4<CAN2, RX_SIZE_1024, TX_SIZE_1024> Can1;
 #endif
 
+unsigned long start_time;
+
 static inline void print_hex(uint8_t *data, int len) {
 	char temp[10];
 	for (int b=0;b < len; b++) {
@@ -101,6 +103,25 @@ void got_frame(CANFrame &frame, uint8_t which_interface)
 		Serial.println((double)(longitude / 10000000.0 - 210.0),7);
 	}
 
+	//print hex dump of message:
+	Serial.print(millis() - start_time);
+
+	if (which_interface == 1) {
+		Serial.print(" can1->can0: ");
+	} else {
+		Serial.print(" can0->can1: ");
+	}
+
+        Serial.print(PGN);
+        Serial.print(",");
+        Serial.print(priority);
+        Serial.print(",");
+        Serial.print(srcaddr);
+        Serial.print(",");
+        Serial.print(destaddr);
+        Serial.print(",");
+        print_hex(frame.get_data()->bytes, frame.get_length());	
+
 	if (which_interface == 1) {
 		//send to other interface (bridge)
 #ifdef TEENSY
@@ -152,6 +173,7 @@ void setup()
 	delay(5000);
 	Serial.begin(115200);
 	Serial.println("j1939 CAN bridge sniffer.");
+	start_time=millis();
 
 #ifdef TEENSY
 	//Teensy FlexCAN_T4 setup
