@@ -66,7 +66,7 @@ void j1939Decode(long ID, unsigned long* PGN, byte* priority, byte* src_addr, by
 	long _priority = ID & 0x1C000000;
 	*priority = (int)(_priority >> 26);
 
-	*PGN = ID & 0x00FFFF00;
+	*PGN = ID & 0x01FFFF00;
 	*PGN = *PGN >> 8;
 
 	ID = ID & 0x000000FF;
